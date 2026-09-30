@@ -1,0 +1,853 @@
+<!doctype html>
+<html lang="zh-Hant">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="description" content="雄中 TYPT 校隊甄選：匯入學生名單、隨機決定出場順序、逐人抽題並進行 90 秒英文即席演說計時。">
+  <meta name="theme-color" content="#071525">
+  <title>雄中 TYPT｜校隊甄選抽題台</title>
+  <link rel="icon" type="image/svg+xml" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 64 64'%3E%3Crect width='64' height='64' rx='15' fill='%23071525'/%3E%3Ccircle cx='32' cy='32' r='21' fill='none' stroke='%2365e6d4' stroke-width='5'/%3E%3Cpath d='M32 18v16l11 7' fill='none' stroke='%23ffbd59' stroke-width='6' stroke-linecap='round' stroke-linejoin='round'/%3E%3C/svg%3E">
+  <style>
+    :root {
+      color-scheme: dark;
+      --ink: #f4f8fc;
+      --muted: #9fb2c7;
+      --navy: #071525;
+      --navy-2: #0b1d33;
+      --panel: rgba(13, 35, 61, .78);
+      --panel-strong: #0f2947;
+      --line: rgba(164, 198, 229, .18);
+      --cyan: #65e6d4;
+      --cyan-deep: #1eb9ae;
+      --amber: #ffbd59;
+      --red: #ff7373;
+      --shadow: 0 26px 80px rgba(0, 0, 0, .34);
+      --radius: 24px;
+    }
+
+    * { box-sizing: border-box; }
+
+    html, body { min-height: 100%; }
+
+    body {
+      margin: 0;
+      min-width: 320px;
+      background:
+        radial-gradient(circle at 10% 10%, rgba(101, 230, 212, .13), transparent 34rem),
+        radial-gradient(circle at 90% 15%, rgba(255, 189, 89, .09), transparent 30rem),
+        linear-gradient(145deg, #06111e, var(--navy) 48%, #081a2e);
+      color: var(--ink);
+      font-family: Inter, ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", "Noto Sans TC", sans-serif;
+      line-height: 1.5;
+    }
+
+    button, textarea, input { font: inherit; }
+    button { color: inherit; }
+    [hidden] { display: none !important; }
+
+    .shell {
+      width: min(1500px, 100%);
+      min-height: 100dvh;
+      margin: 0 auto;
+      padding: 24px clamp(18px, 3vw, 46px) 30px;
+      display: flex;
+      flex-direction: column;
+      gap: 22px;
+    }
+
+    .topbar {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 24px;
+      min-height: 70px;
+    }
+
+    .brand { display: flex; align-items: center; gap: 14px; min-width: 0; }
+    .brand-mark {
+      width: 48px;
+      aspect-ratio: 1;
+      border-radius: 16px;
+      display: grid;
+      place-items: center;
+      background: linear-gradient(145deg, rgba(101,230,212,.22), rgba(101,230,212,.05));
+      border: 1px solid rgba(101,230,212,.38);
+      box-shadow: inset 0 0 24px rgba(101,230,212,.08);
+      flex: 0 0 auto;
+    }
+    .brand-mark svg { width: 27px; height: 27px; }
+    .eyebrow { margin: 0 0 2px; color: var(--cyan); font-size: .8rem; font-weight: 800; letter-spacing: .17em; }
+    .brand h1 { margin: 0; font-size: clamp(1.08rem, 2.1vw, 1.5rem); letter-spacing: .02em; white-space: nowrap; }
+
+    .steps { display: flex; align-items: center; gap: 8px; }
+    .step {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      color: var(--muted);
+      font-size: .9rem;
+      font-weight: 700;
+      white-space: nowrap;
+    }
+    .step + .step::before { content: ""; width: 22px; height: 1px; background: var(--line); margin-right: 2px; }
+    .step-num {
+      width: 28px;
+      aspect-ratio: 1;
+      display: grid;
+      place-items: center;
+      border-radius: 50%;
+      border: 1px solid var(--line);
+      font-size: .78rem;
+    }
+    .step.active { color: var(--ink); }
+    .step.active .step-num { color: #05211f; border-color: var(--cyan); background: var(--cyan); }
+    .step.done .step-num { color: var(--cyan); border-color: rgba(101,230,212,.5); }
+
+    .panel {
+      background: linear-gradient(155deg, rgba(15,41,71,.9), rgba(9,28,50,.84));
+      border: 1px solid var(--line);
+      border-radius: var(--radius);
+      box-shadow: var(--shadow);
+    }
+
+    .setup-grid {
+      flex: 1;
+      display: grid;
+      grid-template-columns: minmax(0, .92fr) minmax(380px, 1.08fr);
+      gap: 20px;
+      min-height: 0;
+    }
+
+    .setup-card { padding: clamp(22px, 3vw, 38px); display: flex; flex-direction: column; }
+    .section-kicker { margin: 0 0 8px; color: var(--cyan); font-weight: 800; letter-spacing: .12em; font-size: .77rem; }
+    .section-title { margin: 0; font-size: clamp(1.65rem, 3vw, 2.55rem); line-height: 1.18; }
+    .section-copy { margin: 12px 0 22px; color: var(--muted); font-size: 1rem; max-width: 52ch; }
+
+    .roster-input {
+      width: 100%;
+      min-height: 230px;
+      resize: vertical;
+      color: var(--ink);
+      background: rgba(3, 15, 27, .55);
+      border: 1px solid var(--line);
+      border-radius: 18px;
+      padding: 18px 19px;
+      line-height: 1.7;
+      outline: none;
+      transition: border-color .18s, box-shadow .18s;
+    }
+    .roster-input:focus { border-color: var(--cyan); box-shadow: 0 0 0 4px rgba(101,230,212,.1); }
+    .roster-input::placeholder { color: #6f849b; }
+
+    .actions { display: flex; flex-wrap: wrap; gap: 10px; margin-top: 14px; }
+    .button {
+      min-height: 48px;
+      border: 0;
+      border-radius: 14px;
+      padding: 0 18px;
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      gap: 9px;
+      font-weight: 800;
+      cursor: pointer;
+      transition: transform .15s, filter .15s, background .15s, border-color .15s;
+    }
+    .button:hover:not(:disabled) { transform: translateY(-1px); filter: brightness(1.06); }
+    .button:active:not(:disabled) { transform: translateY(0); }
+    .button:focus-visible { outline: 3px solid rgba(101,230,212,.3); outline-offset: 3px; }
+    .button:disabled { opacity: .38; cursor: not-allowed; }
+    .button.primary { background: var(--cyan); color: #06211f; }
+    .button.amber { background: var(--amber); color: #2d1b00; }
+    .button.ghost { background: rgba(255,255,255,.045); color: var(--ink); border: 1px solid var(--line); }
+    .button.big { min-height: 58px; padding-inline: 26px; font-size: 1.04rem; }
+    .file-label { position: relative; overflow: hidden; }
+    .file-label input { position: absolute; inset: 0; opacity: 0; cursor: pointer; }
+
+    .hint-row { margin-top: auto; padding-top: 20px; display: flex; gap: 10px; color: var(--muted); font-size: .87rem; }
+    .hint-row svg { flex: 0 0 auto; margin-top: 2px; color: var(--amber); }
+
+    .order-card { padding: clamp(22px, 3vw, 34px); display: flex; min-height: 0; flex-direction: column; }
+    .order-head { display: flex; align-items: flex-start; justify-content: space-between; gap: 18px; }
+    .count-badge { padding: 8px 12px; border-radius: 999px; color: var(--cyan); background: rgba(101,230,212,.09); border: 1px solid rgba(101,230,212,.22); font-weight: 800; white-space: nowrap; }
+    .order-list {
+      margin: 20px 0;
+      padding: 0;
+      list-style: none;
+      display: grid;
+      grid-template-columns: repeat(2, minmax(0, 1fr));
+      gap: 10px;
+      overflow: auto;
+      min-height: 180px;
+      align-content: start;
+    }
+    .order-empty { grid-column: 1 / -1; min-height: 210px; display: grid; place-items: center; text-align: center; color: var(--muted); border: 1px dashed var(--line); border-radius: 18px; padding: 30px; }
+    .order-item { display: flex; align-items: center; gap: 11px; min-height: 54px; padding: 10px 13px; background: rgba(2,14,26,.35); border: 1px solid var(--line); border-radius: 15px; animation: rise .32s both; }
+    .order-number { color: var(--amber); font-weight: 900; font-variant-numeric: tabular-nums; }
+    .order-name { min-width: 0; font-weight: 750; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+    .order-footer { display: flex; gap: 10px; margin-top: auto; }
+    .order-footer .button:last-child { flex: 1; }
+
+    .stage-layout {
+      flex: 1;
+      display: grid;
+      grid-template-columns: 250px minmax(0, 1fr) 280px;
+      gap: 18px;
+      min-height: 0;
+    }
+    .candidate-rail, .timer-panel { padding: 22px; min-height: 0; }
+    .candidate-rail { display: flex; flex-direction: column; }
+    .rail-title { margin: 0 0 14px; font-size: .82rem; color: var(--muted); letter-spacing: .12em; }
+    .candidate-list { display: flex; flex-direction: column; gap: 8px; overflow: auto; padding-right: 4px; }
+    .candidate {
+      display: grid;
+      grid-template-columns: 30px minmax(0,1fr);
+      gap: 10px;
+      align-items: center;
+      padding: 11px;
+      border-radius: 13px;
+      color: var(--muted);
+      border: 1px solid transparent;
+    }
+    .candidate .ordinal { font-size: .78rem; font-weight: 900; text-align: center; }
+    .candidate .name { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; font-weight: 750; }
+    .candidate.current { color: var(--ink); border-color: rgba(101,230,212,.38); background: rgba(101,230,212,.09); }
+    .candidate.current .ordinal { color: var(--cyan); }
+    .candidate.complete { color: #8197ad; }
+    .candidate.complete .ordinal { color: var(--cyan); }
+    .candidate.complete .ordinal::after { content: "✓"; }
+    .candidate.complete .ordinal span { display: none; }
+
+    .main-stage { padding: clamp(22px, 3vw, 38px); display: flex; flex-direction: column; min-width: 0; overflow: hidden; }
+    .student-line { display: flex; align-items: flex-start; justify-content: space-between; gap: 20px; }
+    .student-name { margin: 4px 0 0; font-size: clamp(2rem, 5vw, 4rem); line-height: 1; letter-spacing: -.03em; }
+    .progress-chip { padding: 8px 12px; border-radius: 999px; color: var(--muted); border: 1px solid var(--line); white-space: nowrap; font-weight: 700; }
+
+    .draw-zone {
+      flex: 1;
+      min-height: 360px;
+      margin-top: 24px;
+      border: 1px dashed rgba(101,230,212,.3);
+      border-radius: 24px;
+      display: grid;
+      place-items: center;
+      background: radial-gradient(circle, rgba(101,230,212,.065), transparent 65%);
+      padding: 26px;
+      text-align: center;
+    }
+    .draw-button {
+      width: min(310px, 72vw);
+      aspect-ratio: 1;
+      border-radius: 50%;
+      border: 1px solid rgba(101,230,212,.46);
+      background: radial-gradient(circle at 35% 28%, #8df4e6, var(--cyan-deep) 58%, #11857f);
+      color: #032321;
+      box-shadow: 0 0 0 14px rgba(101,230,212,.055), 0 20px 55px rgba(0,0,0,.3);
+      cursor: pointer;
+      font-size: clamp(1.5rem, 4vw, 2.3rem);
+      font-weight: 950;
+      letter-spacing: .08em;
+      transition: transform .18s, box-shadow .18s;
+    }
+    .draw-button:hover { transform: scale(1.025); box-shadow: 0 0 0 18px rgba(101,230,212,.07), 0 24px 65px rgba(0,0,0,.35); }
+    .draw-button small { display: block; margin-top: 8px; font-size: .85rem; font-weight: 700; letter-spacing: .03em; opacity: .75; }
+
+    .problem-card { width: 100%; text-align: left; }
+    .problem-meta { display: flex; flex-wrap: wrap; align-items: center; gap: 8px; color: var(--muted); font-size: .85rem; font-weight: 750; }
+    .problem-meta span { padding: 6px 9px; border-radius: 9px; background: rgba(255,255,255,.05); }
+    .problem-meta .category { color: var(--cyan); }
+    .problem-title { margin: 20px 0 2px; font-size: clamp(2rem, 4.5vw, 4.2rem); line-height: 1.05; letter-spacing: -.045em; }
+    .problem-title-zh { margin: 0; color: var(--amber); font-size: clamp(1.18rem, 2.2vw, 1.65rem); font-weight: 800; }
+    .prompt-en { margin: 24px 0 10px; font-size: clamp(1.2rem, 2.4vw, 1.85rem); line-height: 1.42; font-weight: 680; }
+    .prompt-zh { margin: 0; color: #b9c9d9; font-size: clamp(1rem, 1.55vw, 1.22rem); line-height: 1.62; }
+    .problem-actions { margin-top: 24px; display: flex; gap: 10px; }
+
+    .timer-panel { display: flex; flex-direction: column; align-items: stretch; }
+    .timer-label { margin: 0; text-align: center; color: var(--muted); font-size: .8rem; letter-spacing: .13em; font-weight: 800; }
+    .timer-ring {
+      --progress: 1;
+      width: min(210px, 100%);
+      aspect-ratio: 1;
+      margin: 18px auto 22px;
+      border-radius: 50%;
+      padding: 10px;
+      background: conic-gradient(var(--cyan) calc(var(--progress) * 1turn), rgba(255,255,255,.08) 0);
+      display: grid;
+      place-items: center;
+      transition: background .2s;
+    }
+    .timer-ring.warning { background: conic-gradient(var(--amber) calc(var(--progress) * 1turn), rgba(255,255,255,.08) 0); }
+    .timer-ring.danger { background: conic-gradient(var(--red) calc(var(--progress) * 1turn), rgba(255,255,255,.08) 0); }
+    .timer-face { width: 100%; aspect-ratio: 1; border-radius: 50%; background: #091a2d; display: grid; place-items: center; box-shadow: inset 0 0 30px rgba(0,0,0,.35); }
+    .timer-number { font-size: clamp(2.7rem, 5vw, 4.5rem); line-height: 1; font-weight: 900; letter-spacing: -.06em; font-variant-numeric: tabular-nums; }
+    .timer-controls { display: grid; gap: 9px; }
+    .timer-controls .button { width: 100%; }
+    .timer-help { margin: auto 0 0; padding-top: 18px; color: var(--muted); text-align: center; font-size: .82rem; }
+    .key { display: inline-grid; place-items: center; min-width: 25px; height: 23px; padding: 0 6px; border: 1px solid var(--line); border-bottom-color: rgba(255,255,255,.3); border-radius: 6px; background: rgba(255,255,255,.05); color: var(--ink); font-size: .72rem; font-weight: 800; }
+
+    .stage-footer { display: flex; justify-content: space-between; align-items: center; gap: 14px; color: var(--muted); font-size: .86rem; }
+    .text-button { border: 0; padding: 7px; color: var(--muted); background: none; cursor: pointer; font-weight: 700; }
+    .text-button:hover { color: var(--ink); }
+
+    .complete-view { width: 100%; align-self: stretch; text-align: left; }
+    .complete-view h3 { margin: 5px 0 8px; font-size: clamp(2rem, 4vw, 3.5rem); }
+    .complete-view > p { color: var(--muted); margin: 0 0 20px; }
+    .result-list { max-height: 42vh; overflow: auto; display: grid; gap: 8px; margin-bottom: 20px; }
+    .result-row { display: grid; grid-template-columns: 34px minmax(100px,.55fr) minmax(180px,1fr); gap: 12px; align-items: center; padding: 11px 13px; border-radius: 13px; border: 1px solid var(--line); background: rgba(3,15,27,.35); }
+    .result-row .no { color: var(--cyan); font-weight: 900; }
+    .result-row .student { font-weight: 800; }
+    .result-row .topic { color: var(--muted); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+
+    .shuffle-overlay { position: fixed; inset: 0; z-index: 20; display: grid; place-items: center; background: rgba(2,10,19,.9); backdrop-filter: blur(12px); opacity: 0; pointer-events: none; transition: opacity .18s; }
+    .shuffle-overlay.show { opacity: 1; pointer-events: auto; }
+    .shuffle-number { color: var(--cyan); font-size: clamp(5rem, 18vw, 13rem); font-weight: 950; letter-spacing: -.07em; text-shadow: 0 0 55px rgba(101,230,212,.35); }
+    .toast { position: fixed; left: 50%; bottom: 28px; z-index: 30; max-width: calc(100vw - 32px); padding: 12px 18px; border-radius: 12px; background: #f3f7fb; color: #0a1b2f; font-weight: 800; box-shadow: var(--shadow); transform: translate(-50%, 18px); opacity: 0; pointer-events: none; transition: .2s; }
+    .toast.show { transform: translate(-50%, 0); opacity: 1; }
+
+    @keyframes rise { from { opacity: 0; transform: translateY(8px); } to { opacity: 1; transform: translateY(0); } }
+
+    @media (max-width: 1050px) {
+      .setup-grid { grid-template-columns: 1fr; }
+      .stage-layout { grid-template-columns: 200px minmax(0,1fr); }
+      .timer-panel { grid-column: 1 / -1; flex-direction: row; align-items: center; gap: 22px; }
+      .timer-ring { width: 150px; margin: 0; flex: 0 0 auto; }
+      .timer-controls { grid-template-columns: 1fr 1fr; flex: 1; }
+      .timer-help { display: none; }
+    }
+
+    @media (max-width: 760px) {
+      .shell { padding: 15px; gap: 15px; }
+      .topbar { align-items: flex-start; }
+      .steps { gap: 4px; }
+      .step span:last-child { display: none; }
+      .step + .step::before { width: 10px; }
+      .brand-mark { width: 42px; border-radius: 13px; }
+      .setup-card, .order-card, .main-stage, .candidate-rail, .timer-panel { padding: 19px; }
+      .setup-grid { grid-template-columns: minmax(0,1fr); }
+      .order-list { grid-template-columns: 1fr; }
+      .stage-layout { display: flex; flex-direction: column; }
+      .candidate-rail { max-height: 190px; }
+      .candidate-list { display: grid; grid-template-columns: repeat(2, minmax(0,1fr)); }
+      .main-stage { min-height: 560px; }
+      .timer-panel { flex-direction: column; }
+      .timer-ring { width: 175px; }
+      .timer-controls { width: 100%; }
+      .draw-zone { min-height: 330px; padding: 18px; }
+      .problem-actions { flex-direction: column; }
+      .result-row { grid-template-columns: 30px minmax(0,1fr); }
+      .result-row .topic { grid-column: 2; }
+      .stage-footer { align-items: flex-start; }
+      .shortcut-copy { display: none; }
+    }
+
+    @media (prefers-reduced-motion: reduce) {
+      *, *::before, *::after { scroll-behavior: auto !important; animation-duration: .001ms !important; transition-duration: .001ms !important; }
+    }
+  </style>
+</head>
+<body>
+  <main class="shell">
+    <header class="topbar">
+      <div class="brand">
+        <span class="brand-mark" aria-hidden="true">
+          <svg viewBox="0 0 32 32" fill="none"><circle cx="16" cy="16" r="11" stroke="currentColor" stroke-width="2.4"/><path d="M16 8.8v8.1l5.5 3.4" stroke="#ffbd59" stroke-width="2.8" stroke-linecap="round" stroke-linejoin="round"/></svg>
+        </span>
+        <div><p class="eyebrow">KSHS · TYPT</p><h1>校隊甄選抽題台</h1></div>
+      </div>
+      <nav class="steps" aria-label="甄選流程">
+        <div class="step active" data-step="1"><span class="step-num">1</span><span>匯入名單</span></div>
+        <div class="step" data-step="2"><span class="step-num">2</span><span>決定順序</span></div>
+        <div class="step" data-step="3"><span class="step-num">3</span><span>抽題計時</span></div>
+      </nav>
+    </header>
+
+    <section class="setup-grid" id="setup-screen">
+      <article class="panel setup-card">
+        <p class="section-kicker">STEP 01 · ROSTER</p>
+        <h2 class="section-title">匯入甄選名單</h2>
+        <p class="section-copy">每行一位學生，也可以直接讀取 CSV 或 TXT。最多 30 人，重複姓名會自動合併。</p>
+        <label for="roster-input" class="sr-only" style="position:absolute;clip:rect(0 0 0 0)">學生名單</label>
+        <textarea class="roster-input" id="roster-input" placeholder="例如：&#10;王小明&#10;陳怡君&#10;林大同" spellcheck="false"></textarea>
+        <div class="actions">
+          <button class="button primary" id="import-button" type="button">匯入文字名單</button>
+          <label class="button ghost file-label">選擇 CSV／TXT<input id="file-input" type="file" accept=".csv,.txt,text/csv,text/plain"></label>
+          <button class="button ghost" id="clear-button" type="button">清除</button>
+        </div>
+        <div class="hint-row">
+          <svg width="18" height="18" viewBox="0 0 24 24" fill="none" aria-hidden="true"><circle cx="12" cy="12" r="9" stroke="currentColor" stroke-width="2"/><path d="M12 11v5M12 8h.01" stroke="currentColor" stroke-width="2" stroke-linecap="round"/></svg>
+          <span>CSV 若包含座號與姓名，系統會取每列最後一欄作為姓名。</span>
+        </div>
+      </article>
+
+      <article class="panel order-card">
+        <div class="order-head">
+          <div><p class="section-kicker">STEP 02 · ORDER</p><h2 class="section-title">抽出場順序</h2></div>
+          <span class="count-badge" id="roster-count">0 位</span>
+        </div>
+        <ol class="order-list" id="order-list"><li class="order-empty">名單匯入後會顯示在這裡</li></ol>
+        <div class="order-footer">
+          <button class="button ghost" id="shuffle-order" type="button" disabled>隨機排序</button>
+          <button class="button amber big" id="start-session" type="button" disabled>開始甄選</button>
+        </div>
+      </article>
+    </section>
+
+    <section id="stage-screen" hidden>
+      <div class="stage-layout">
+        <aside class="panel candidate-rail">
+          <h2 class="rail-title">出場順序</h2>
+          <div class="candidate-list" id="candidate-list"></div>
+        </aside>
+
+        <article class="panel main-stage">
+          <div class="student-line" id="student-line">
+            <div><p class="section-kicker">NOW SPEAKING</p><h2 class="student-name" id="current-student">—</h2></div>
+            <span class="progress-chip" id="student-progress">1 / 1</span>
+          </div>
+          <div class="draw-zone" id="draw-zone">
+            <button class="draw-button" id="draw-topic" type="button">抽選題目<small>點擊螢幕開始</small></button>
+          </div>
+        </article>
+
+        <aside class="panel timer-panel">
+          <p class="timer-label">ENGLISH SPEECH</p>
+          <div class="timer-ring" id="timer-ring"><div class="timer-face"><span class="timer-number" id="timer-number">1:30</span></div></div>
+          <div class="timer-controls">
+            <button class="button primary big" id="timer-toggle" type="button" disabled>開始計時</button>
+            <button class="button ghost" id="timer-reset" type="button" disabled>重設 90 秒</button>
+          </div>
+          <p class="timer-help"><span class="key">Space</span> 開始／暫停</p>
+        </aside>
+      </div>
+    </section>
+
+    <footer class="stage-footer">
+      <span class="shortcut-copy" id="shortcut-copy">匯入名單後，先抽出場順序再開始甄選。</span>
+      <div>
+        <button class="text-button" id="fullscreen-button" type="button">全螢幕</button>
+        <button class="text-button" id="back-button" type="button" hidden>返回名單</button>
+      </div>
+    </footer>
+  </main>
+
+  <div class="shuffle-overlay" id="shuffle-overlay" aria-hidden="true"><div class="shuffle-number" id="shuffle-number">#17</div></div>
+  <div class="toast" id="toast" role="status" aria-live="polite"></div>
+
+  <script>
+    const PROBLEMS = [
+      { year: 1997, number: 17, category: "MECHANICS", title: "Leap", titleZh: "跳躍", en: "How does jump height change with squat depth?", zh: "下蹲越深，跳躍高度會如何改變？" },
+      { year: 2000, number: 13, category: "MECHANICS", title: "Rolling Can", titleZh: "滾動水罐", en: "A can with some water rolls down a slope. Study how it moves.", zh: "裝有部分水的罐子沿斜面滾下，研究水量如何影響它的運動。" },
+      { year: 2008, number: 2, category: "MECHANICS", title: "Winged Seed", titleZh: "翼狀種子", en: "Watch how a maple seed falls and spins. Find what changes its motion.", zh: "觀察楓樹種子下落與旋轉，研究哪些因素會改變它的運動。" },
+      { year: 2008, number: 8, category: "MECHANICS", title: "Astroblaster", titleZh: "疊球反彈", en: "Drop a small ball on top of a large ball. Why does the small ball fly so high?", zh: "把小球疊在大球上一起落下，為什麼小球會彈得很高？" },
+      { year: 2013, number: 1, category: "MECHANICS", title: "Paper Bridge", titleZh: "紙橋", en: "Build a strong bridge from one A4 sheet. Find the best shape.", zh: "只用一張 A4 紙製作紙橋，研究哪種形狀最能承重。" },
+      { year: 2017, number: 1, category: "MECHANICS", title: "Egg Landing", titleZh: "雞蛋防摔", en: "Build a small device that protects a raw egg dropped from 2.5 metres.", zh: "設計一個小型裝置，保護生雞蛋從 2.5 公尺落下而不破。" },
+      { year: 2004, number: 11, category: "WAVES & SOUND", title: "String Telephone", titleZh: "棉線電話", en: "How do string length and tension change the sound?", zh: "棉線的長度與張力如何影響聲音傳遞？" },
+      { year: 2008, number: 9, category: "WAVES & SOUND", title: "Flute", titleZh: "簡易笛子", en: "Make a flute from a tube. How do the hole size and position change the sound?", zh: "用管子製作簡易笛子，研究孔洞大小與位置如何影響聲音。" },
+      { year: 2009, number: 2, category: "WAVES & SOUND", title: "Coupled Compasses", titleZh: "耦合指南針", en: "Put two compasses close together. Move one needle and watch the other.", zh: "把兩個指南針放近，撥動一支磁針並觀察另一支的運動。" },
+      { year: 2015, number: 10, category: "WAVES & SOUND", title: "Singing Blades of Grass", titleZh: "會唱歌的草葉", en: "Blow across a strip of grass or paper to make sound. Study what changes the pitch.", zh: "對著草葉或紙條吹氣發聲，研究哪些因素會改變音高。" },
+      { year: 2019, number: 5, category: "WAVES & SOUND", title: "Filling Up a Bottle", titleZh: "裝水瓶的聲音", en: "Let water flow into a bottle. How does the sound change as the bottle fills?", zh: "讓水流入瓶中，研究聲音如何隨水位上升而改變。" },
+      { year: 2021, number: 11, category: "WAVES & SOUND", title: "Guitar String", titleZh: "吉他弦", en: "Drive a guitar string near its natural frequency and study its motion.", zh: "以接近自然頻率的週期性外力驅動吉他弦，研究它的振動。" },
+      { year: 2008, number: 3, category: "OPTICS", title: "Pin-hole Camera", titleZh: "針孔相機", en: "Build a pin-hole camera. Find the hole size that gives the best image.", zh: "製作針孔相機，找出能得到最佳影像的孔洞大小。" },
+      { year: 2008, number: 16, category: "OPTICS", title: "Black Spoon", titleZh: "黑湯匙鏡面", en: "Cover a spoon with soot and put it in water. Why does it look shiny?", zh: "用蠟燭煙燻黑湯匙後放入水中，為什麼它看起來會發亮？" },
+      { year: 2015, number: 12, category: "OPTICS", title: "Thick Lens", titleZh: "水瓶透鏡", en: "Fill a bottle with water and use it as a lens. Study its focus.", zh: "把瓶子裝水當成透鏡，研究它的焦距與聚光能力。" },
+      { year: 2015, number: 16, category: "OPTICS", title: "Wet and Dark", titleZh: "濕衣服變深色", en: "Why do clothes usually look darker when they are wet?", zh: "為什麼衣服或布料沾水後通常看起來比較深色？" },
+      { year: 2017, number: 3, category: "OPTICS", title: "Single Lens Telescope", titleZh: "單透鏡望遠鏡", en: "Make a telescope with one lens and a small hole. Study the image.", zh: "用一片透鏡和一個小孔製作望遠鏡，研究影像的大小與清晰度。" },
+      { year: 2024, number: 2, category: "OPTICS", title: "Droplet Microscope", titleZh: "水滴顯微鏡", en: "Use one water drop as a lens. Study image size and sharpness.", zh: "用玻璃上的一滴水作為透鏡，研究放大率與影像清晰度。" },
+      { year: 1998, number: 14, category: "THERMAL & FLUIDS", title: "Water Rise", titleZh: "布條吸水", en: "Put one end of a cloth strip in water. How fast and how high does the water rise?", zh: "將布條一端浸入水中，研究水上升的速度與最大高度。" },
+      { year: 2014, number: 7, category: "THERMAL & FLUIDS", title: "Pot-in-pot Refrigerator", titleZh: "陶罐冰箱", en: "Use two pots, wet sand and evaporation to keep food cool.", zh: "利用大小陶罐、濕沙與蒸發作用降溫，研究如何得到最佳冷卻效果。" },
+      { year: 2015, number: 5, category: "THERMAL & FLUIDS", title: "Two Balloons", titleZh: "兩顆氣球", en: "Connect two balloons. Which way will the air flow?", zh: "把兩顆大小不同的氣球連通，空氣會往哪個方向流動？" },
+      { year: 2018, number: 4, category: "THERMAL & FLUIDS", title: "Heron's Fountain", titleZh: "希羅噴泉", en: "Build a fountain powered only by water and trapped air. Study the jet height.", zh: "製作只靠水與密閉空氣運作的噴泉，研究水柱高度。" },
+      { year: 2022, number: 13, category: "THERMAL & FLUIDS", title: "Candle Powered Turbine", titleZh: "蠟燭紙渦輪", en: "Hang a paper spiral over a candle and make it turn. Find what gives the largest torque.", zh: "把紙螺旋懸掛在蠟燭上方使它旋轉，研究如何產生最大轉矩。" },
+      { year: 2025, number: 6, category: "THERMAL & FLUIDS", title: "Dripping Faucet", titleZh: "滴水水龍頭", en: "Study how water flow changes the time between drops.", zh: "研究水流量如何影響水滴大小與相鄰水滴的時間。" },
+      { year: 2004, number: 16, category: "ELECTRICITY & MAGNETISM", title: "Small Fields", titleZh: "測量地磁場", en: "Use a compass needle to measure Earth's magnetic field.", zh: "用指南針設計裝置，測量地球磁場的大小。" },
+      { year: 2014, number: 16, category: "ELECTRICITY & MAGNETISM", title: "Magnetic Brakes", titleZh: "磁力煞車", en: "Drop a magnet through a metal tube. Why does it fall slowly?", zh: "讓磁鐵穿過金屬管下落，研究它為什麼會緩慢下降。" },
+      { year: 2020, number: 10, category: "ELECTRICITY & MAGNETISM", title: "Conducting Lines", titleZh: "鉛筆導線", en: "Draw a pencil line on paper and measure its electrical resistance.", zh: "在紙上畫鉛筆線，測量並研究它的電阻。" },
+      { year: 2021, number: 8, category: "ELECTRICITY & MAGNETISM", title: "Fuses", titleZh: "保險絲", en: "Pass current through a thin wire. What controls the time before it melts?", zh: "讓電流通過細金屬線，研究哪些因素決定它多久會熔斷。" },
+      { year: 2024, number: 10, category: "ELECTRICITY & MAGNETISM", title: "Magnetic Gear", titleZh: "磁力齒輪", en: "Put magnets on several spinners. Turn one and watch the others.", zh: "在數個指尖陀螺上裝磁鐵，轉動一個並觀察其他陀螺。" },
+      { year: 2026, number: 2, category: "ELECTRICITY & MAGNETISM", title: "Electrical Damping", titleZh: "電磁阻尼", en: "Let a magnet on a spring move inside a coil. Study how the motion slows down.", zh: "讓彈簧上的磁鐵在線圈內振動，研究它的運動如何逐漸減弱。" }
+    ];
+
+    const SESSION_KEY = "kshs-typt-selection-flow-v1";
+    const SPEECH_SECONDS = 90;
+    const el = id => document.getElementById(id);
+    const setupScreen = el("setup-screen");
+    const stageScreen = el("stage-screen");
+    const rosterInput = el("roster-input");
+    const orderList = el("order-list");
+    const candidateList = el("candidate-list");
+    const drawZone = el("draw-zone");
+    const timerRing = el("timer-ring");
+    const timerNumber = el("timer-number");
+    const timerToggle = el("timer-toggle");
+    const timerReset = el("timer-reset");
+    const overlay = el("shuffle-overlay");
+    const overlayNumber = el("shuffle-number");
+    const toast = el("toast");
+    let timerId = null;
+    let toastId = null;
+    let drawing = false;
+
+    let state = loadState() || freshState();
+
+    function freshState(roster = []) {
+      return { phase: "setup", roster, order: [], current: 0, deck: shuffledIndices(PROBLEMS.length), deckPos: 0, assignments: [], currentProblemIndex: null, secondsLeft: SPEECH_SECONDS, timerRunning: false };
+    }
+
+    function randomInt(max) {
+      if (max <= 1) return 0;
+      const limit = Math.floor(0x100000000 / max) * max;
+      const values = new Uint32Array(1);
+      do { crypto.getRandomValues(values); } while (values[0] >= limit);
+      return values[0] % max;
+    }
+
+    function shuffledIndices(length) {
+      const values = Array.from({ length }, (_, index) => index);
+      for (let i = values.length - 1; i > 0; i -= 1) {
+        const j = randomInt(i + 1);
+        [values[i], values[j]] = [values[j], values[i]];
+      }
+      return values;
+    }
+
+    function saveState() {
+      const snapshot = { ...state, timerRunning: false };
+      sessionStorage.setItem(SESSION_KEY, JSON.stringify(snapshot));
+    }
+
+    function loadState() {
+      try {
+        const saved = JSON.parse(sessionStorage.getItem(SESSION_KEY));
+        if (!saved || !Array.isArray(saved.roster) || !Array.isArray(saved.order) || !Array.isArray(saved.deck) || !Array.isArray(saved.assignments)) return null;
+        if (saved.roster.length > 30 || saved.deck.length !== PROBLEMS.length) return null;
+        saved.timerRunning = false;
+        return saved;
+      } catch (_) { return null; }
+    }
+
+    function parseRoster(text) {
+      const cleaned = text.replace(/^\uFEFF/, "").trim();
+      if (!cleaned) return [];
+      const lines = cleaned.split(/\r?\n/).map(line => line.trim()).filter(Boolean);
+      let names;
+      if (lines.length === 1 && /[,;\t]/.test(lines[0])) {
+        names = lines[0].split(/[,;\t]/);
+      } else {
+        names = lines.map(line => {
+          const cells = line.split(/[,;\t]/).map(cell => cell.trim()).filter(Boolean);
+          return cells.at(-1) || "";
+        });
+      }
+      const headers = new Set(["姓名", "學生姓名", "name", "student", "student name"]);
+      const seen = new Set();
+      return names.map(name => name.replace(/^['\"]|['\"]$/g, "").trim()).filter(name => {
+        const key = name.toLocaleLowerCase();
+        if (!name || headers.has(key) || seen.has(key)) return false;
+        seen.add(key);
+        return true;
+      });
+    }
+
+    function setRoster(names, announce = true) {
+      if (!Array.isArray(names) || names.length === 0) throw new Error("名單至少需要 1 位學生。");
+      if (names.length > 30) throw new Error("為避免題目重複，名單最多 30 位學生。");
+      stopTimer();
+      state = freshState(names);
+      rosterInput.value = names.join("\n");
+      saveState();
+      renderSetup();
+      if (announce) showToast(`已匯入 ${names.length} 位學生`);
+    }
+
+    function importRoster() {
+      try { setRoster(parseRoster(rosterInput.value)); }
+      catch (error) { showToast(error.message); }
+    }
+
+    function shuffleOrder(announce = true) {
+      if (!state.roster.length) throw new Error("請先匯入學生名單。");
+      state.order = shuffledIndices(state.roster.length).map(index => state.roster[index]);
+      saveState();
+      renderSetup();
+      if (announce) showToast("已抽出新的出場順序");
+      return state.order;
+    }
+
+    function startSession() {
+      if (!state.roster.length) return showToast("請先匯入學生名單");
+      if (!state.order.length) shuffleOrder(false);
+      state.phase = "stage";
+      state.current = Math.min(state.current, state.order.length);
+      saveState();
+      render();
+    }
+
+    async function drawTopic() {
+      if (drawing || state.current >= state.order.length || state.currentProblemIndex !== null) return currentProblem();
+      if (state.deckPos >= state.deck.length) throw new Error("題庫已抽完。");
+      drawing = true;
+      el("draw-topic").disabled = true;
+      overlay.classList.add("show");
+      overlay.setAttribute("aria-hidden", "false");
+      const duration = matchMedia("(prefers-reduced-motion: reduce)").matches ? 120 : 780;
+      const start = performance.now();
+      await new Promise(resolve => {
+        function tick(now) {
+          const sample = PROBLEMS[randomInt(PROBLEMS.length)];
+          overlayNumber.textContent = `#${String(sample.number).padStart(2, "0")}`;
+          if (now - start < duration) requestAnimationFrame(tick); else resolve();
+        }
+        requestAnimationFrame(tick);
+      });
+      state.currentProblemIndex = state.deck[state.deckPos++];
+      state.secondsLeft = SPEECH_SECONDS;
+      state.assignments[state.current] = { student: state.order[state.current], problemIndex: state.currentProblemIndex, complete: false };
+      saveState();
+      overlay.classList.remove("show");
+      overlay.setAttribute("aria-hidden", "true");
+      drawing = false;
+      renderStage();
+      return currentProblem();
+    }
+
+    function currentProblem() {
+      return state.currentProblemIndex === null ? null : PROBLEMS[state.currentProblemIndex];
+    }
+
+    function toggleTimer(force) {
+      if (state.currentProblemIndex === null || state.current >= state.order.length) throw new Error("請先抽選題目。");
+      const shouldRun = typeof force === "boolean" ? force : !state.timerRunning;
+      if (shouldRun && state.secondsLeft === 0) state.secondsLeft = SPEECH_SECONDS;
+      state.timerRunning = shouldRun;
+      if (timerId) window.clearInterval(timerId);
+      timerId = null;
+      if (shouldRun) {
+        timerId = window.setInterval(() => {
+          state.secondsLeft = Math.max(0, state.secondsLeft - 1);
+          renderTimer();
+          if (state.secondsLeft === 0) {
+            stopTimer();
+            showToast("90 秒時間到");
+          }
+        }, 1000);
+      }
+      renderTimer();
+      saveState();
+      return state.timerRunning;
+    }
+
+    function stopTimer() {
+      state.timerRunning = false;
+      if (timerId) window.clearInterval(timerId);
+      timerId = null;
+    }
+
+    function resetTimer() {
+      stopTimer();
+      state.secondsLeft = SPEECH_SECONDS;
+      saveState();
+      renderTimer();
+    }
+
+    function completeCurrent() {
+      if (state.currentProblemIndex === null) throw new Error("請先讓目前學生抽題。");
+      stopTimer();
+      state.assignments[state.current].complete = true;
+      state.current += 1;
+      state.currentProblemIndex = null;
+      state.secondsLeft = SPEECH_SECONDS;
+      saveState();
+      renderStage();
+      return { completed: state.current, total: state.order.length, finished: state.current >= state.order.length };
+    }
+
+    function render() {
+      const isStage = state.phase === "stage";
+      setupScreen.hidden = isStage;
+      stageScreen.hidden = !isStage;
+      el("back-button").hidden = !isStage;
+      el("shortcut-copy").textContent = isStage ? "D 抽題 · Space 計時 · N 下一位" : "匯入名單後，先抽出場順序再開始甄選。";
+      document.querySelectorAll(".step").forEach((step, index) => {
+        const number = index + 1;
+        step.classList.toggle("active", isStage ? number === 3 : (state.order.length ? number === 2 : number === 1));
+        step.classList.toggle("done", isStage ? number < 3 : (state.order.length ? number < 2 : false));
+      });
+      if (isStage) renderStage(); else renderSetup();
+    }
+
+    function renderSetup() {
+      el("roster-count").textContent = `${state.roster.length} 位`;
+      el("shuffle-order").disabled = !state.roster.length;
+      el("start-session").disabled = !state.roster.length;
+      const list = state.order.length ? state.order : state.roster;
+      if (!list.length) {
+        orderList.innerHTML = '<li class="order-empty">名單匯入後會顯示在這裡</li>';
+        return;
+      }
+      orderList.innerHTML = list.map((name, index) => `<li class="order-item" style="animation-delay:${Math.min(index * 18, 240)}ms"><span class="order-number">${String(index + 1).padStart(2, "0")}</span><span class="order-name"></span></li>`).join("");
+      [...orderList.querySelectorAll(".order-name")].forEach((node, index) => { node.textContent = list[index]; });
+    }
+
+    function renderStage() {
+      candidateList.innerHTML = state.order.map((name, index) => {
+        const status = index < state.current ? "complete" : index === state.current ? "current" : "";
+        return `<div class="candidate ${status}"><span class="ordinal"><span>${String(index + 1).padStart(2, "0")}</span></span><span class="name"></span></div>`;
+      }).join("");
+      [...candidateList.querySelectorAll(".candidate .name")].forEach((node, index) => { node.textContent = state.order[index]; });
+
+      if (state.current >= state.order.length) {
+        el("student-line").hidden = true;
+        drawZone.innerHTML = `<div class="complete-view"><p class="section-kicker">SELECTION COMPLETE</p><h3>本輪甄選完成</h3><p>${state.order.length} 位學生都已完成抽題。</p><div class="result-list" id="result-list"></div><button class="button amber big" id="new-round" type="button">回到名單，開始新一輪</button></div>`;
+        const resultList = el("result-list");
+        state.assignments.forEach((assignment, index) => {
+          const problem = PROBLEMS[assignment.problemIndex];
+          const row = document.createElement("div");
+          row.className = "result-row";
+          row.innerHTML = `<span class="no">${String(index + 1).padStart(2, "0")}</span><span class="student"></span><span class="topic"></span>`;
+          row.querySelector(".student").textContent = assignment.student;
+          row.querySelector(".topic").textContent = `${problem.title}｜${problem.titleZh}`;
+          resultList.append(row);
+        });
+        el("new-round").addEventListener("click", returnToSetup);
+        timerToggle.disabled = true;
+        timerReset.disabled = true;
+        renderTimer();
+        return;
+      }
+
+      el("student-line").hidden = false;
+      el("current-student").textContent = state.order[state.current];
+      el("student-progress").textContent = `${state.current + 1} / ${state.order.length}`;
+      const problem = currentProblem();
+      if (!problem) {
+        drawZone.innerHTML = '<button class="draw-button" id="draw-topic" type="button">抽選題目<small>點擊螢幕開始</small></button>';
+        el("draw-topic").addEventListener("click", () => drawTopic().catch(error => showToast(error.message)));
+      } else {
+        drawZone.innerHTML = `<div class="problem-card"><div class="problem-meta"><span>IYPT ${problem.year}</span><span>Problem ${problem.number}</span><span class="category"></span></div><h3 class="problem-title"></h3><p class="problem-title-zh"></p><p class="prompt-en"></p><p class="prompt-zh"></p><div class="problem-actions"><button class="button amber big" id="next-student" type="button">完成，下一位</button></div></div>`;
+        drawZone.querySelector(".category").textContent = problem.category;
+        drawZone.querySelector(".problem-title").textContent = problem.title;
+        drawZone.querySelector(".problem-title-zh").textContent = problem.titleZh;
+        drawZone.querySelector(".prompt-en").textContent = problem.en;
+        drawZone.querySelector(".prompt-zh").textContent = problem.zh;
+        el("next-student").addEventListener("click", () => { try { completeCurrent(); } catch (error) { showToast(error.message); } });
+      }
+      timerToggle.disabled = !problem;
+      timerReset.disabled = !problem;
+      renderTimer();
+      requestAnimationFrame(() => candidateList.querySelector(".candidate.current")?.scrollIntoView({ block: "nearest" }));
+    }
+
+    function renderTimer() {
+      const minutes = Math.floor(state.secondsLeft / 60);
+      const seconds = String(state.secondsLeft % 60).padStart(2, "0");
+      timerNumber.textContent = `${minutes}:${seconds}`;
+      timerRing.style.setProperty("--progress", state.secondsLeft / SPEECH_SECONDS);
+      timerRing.classList.toggle("warning", state.secondsLeft <= 30 && state.secondsLeft > 10);
+      timerRing.classList.toggle("danger", state.secondsLeft <= 10);
+      timerToggle.textContent = state.timerRunning ? "暫停計時" : (state.secondsLeft === SPEECH_SECONDS ? "開始計時" : "繼續計時");
+    }
+
+    function returnToSetup() {
+      if (state.current > 0 && state.current < state.order.length && !confirm("目前的甄選進度會被清除，確定返回名單嗎？")) return;
+      const roster = [...state.roster];
+      stopTimer();
+      state = freshState(roster);
+      rosterInput.value = roster.join("\n");
+      saveState();
+      render();
+    }
+
+    function showToast(message) {
+      toast.textContent = message;
+      toast.classList.add("show");
+      clearTimeout(toastId);
+      toastId = setTimeout(() => toast.classList.remove("show"), 2400);
+    }
+
+    el("import-button").addEventListener("click", importRoster);
+    el("clear-button").addEventListener("click", () => {
+      stopTimer();
+      sessionStorage.removeItem(SESSION_KEY);
+      state = freshState();
+      rosterInput.value = "";
+      render();
+      rosterInput.focus();
+    });
+    el("file-input").addEventListener("change", async event => {
+      const file = event.target.files?.[0];
+      if (!file) return;
+      try {
+        rosterInput.value = await file.text();
+        importRoster();
+      } catch (_) { showToast("無法讀取這個檔案"); }
+      event.target.value = "";
+    });
+    el("shuffle-order").addEventListener("click", () => { try { shuffleOrder(); } catch (error) { showToast(error.message); } });
+    el("start-session").addEventListener("click", startSession);
+    timerToggle.addEventListener("click", () => { try { toggleTimer(); } catch (error) { showToast(error.message); } });
+    timerReset.addEventListener("click", resetTimer);
+    el("back-button").addEventListener("click", returnToSetup);
+    el("fullscreen-button").addEventListener("click", async () => {
+      try { if (!document.fullscreenElement) await document.documentElement.requestFullscreen(); else await document.exitFullscreen(); }
+      catch (_) { showToast("瀏覽器無法切換全螢幕"); }
+    });
+
+    document.addEventListener("keydown", event => {
+      if (state.phase !== "stage" || /TEXTAREA|INPUT/.test(event.target.tagName)) return;
+      if (event.code === "Space") {
+        event.preventDefault();
+        try { toggleTimer(); } catch (error) { showToast(error.message); }
+      }
+      if (event.key.toLowerCase() === "d" && state.currentProblemIndex === null) drawTopic().catch(error => showToast(error.message));
+      if (event.key.toLowerCase() === "n" && state.currentProblemIndex !== null) {
+        try { completeCurrent(); } catch (error) { showToast(error.message); }
+      }
+    });
+
+    function registerWebMCP() {
+      const context = document.modelContext;
+      if (!context?.registerTool) return;
+      const tools = [
+        {
+          name: "set_selection_roster", title: "匯入甄選名單", description: "Replace the current roster with 1 to 30 student names and return to roster setup.",
+          inputSchema: { type: "object", properties: { names: { type: "array", minItems: 1, maxItems: 30, items: { type: "string", minLength: 1 } } }, required: ["names"], additionalProperties: false },
+          execute({ names }) { const cleaned = names.map(name => String(name).trim()).filter(Boolean); setRoster(cleaned, false); return { studentCount: cleaned.length }; }
+        },
+        {
+          name: "shuffle_selection_order", title: "抽出場順序", description: "Randomize the speaking order for the imported roster.",
+          inputSchema: { type: "object", properties: {}, additionalProperties: false },
+          execute() { return { order: shuffleOrder(false) }; }
+        },
+        {
+          name: "start_selection_session", title: "開始甄選", description: "Start the selection session with the current randomized speaking order.",
+          inputSchema: { type: "object", properties: {}, additionalProperties: false },
+          execute() { startSession(); return { started: true, student: state.order[state.current], total: state.order.length }; }
+        },
+        {
+          name: "draw_topic_for_current_student", title: "替目前學生抽題", description: "Draw one unused bilingual IYPT topic for the current student.",
+          inputSchema: { type: "object", properties: {}, additionalProperties: false },
+          async execute() { const problem = await drawTopic(); if (!problem) throw new Error("No active student."); return { student: state.order[state.current], title: problem.title, titleZh: problem.titleZh, prompt: problem.en, promptZh: problem.zh }; }
+        },
+        {
+          name: "control_speech_timer", title: "控制演說計時", description: "Start, pause, or reset the 90-second speech timer.",
+          inputSchema: { type: "object", properties: { action: { type: "string", enum: ["start", "pause", "reset"] } }, required: ["action"], additionalProperties: false },
+          execute({ action }) { if (action === "reset") resetTimer(); else toggleTimer(action === "start"); return { running: state.timerRunning, secondsLeft: state.secondsLeft }; }
+        },
+        {
+          name: "complete_current_student", title: "完成並換下一位", description: "Mark the current student's turn complete and advance to the next student.",
+          inputSchema: { type: "object", properties: {}, additionalProperties: false },
+          execute() { return completeCurrent(); }
+        }
+      ];
+      tools.forEach(tool => {
+        tool.annotations = { readOnlyHint: false, untrustedContentHint: tool.name === "set_selection_roster" };
+        try { void Promise.resolve(context.registerTool(tool)).catch(() => {}); } catch (_) {}
+      });
+    }
+
+    if (state.roster.length && !rosterInput.value) rosterInput.value = state.roster.join("\n");
+    render();
+    registerWebMCP();
+  </script>
+</body>
+</html>
