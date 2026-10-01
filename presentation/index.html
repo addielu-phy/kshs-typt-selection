@@ -1,0 +1,650 @@
+<!doctype html>
+<html lang="zh-Hant-TW">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="description" content="雄中 TYPT 第三場甄選：輸入學生姓名、隨機抽出上台順序，逐位進行三分鐘簡報倒數。">
+  <meta name="theme-color" content="#071525">
+  <link rel="canonical" href="https://addielu-phy.github.io/kshs-typt-selection/presentation/">
+  <meta property="og:title" content="雄中 TYPT｜上台簡報抽籤計時台">
+  <meta property="og:description" content="第三場甄選：隨機抽出簡報順序，逐位進行三分鐘倒數。">
+  <meta property="og:type" content="website">
+  <meta property="og:url" content="https://addielu-phy.github.io/kshs-typt-selection/presentation/">
+  <title>雄中 TYPT｜上台簡報抽籤計時台</title>
+  <link rel="icon" type="image/svg+xml" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 64 64'%3E%3Crect width='64' height='64' rx='15' fill='%23071525'/%3E%3Cpath d='M15 46h34M20 40V16h24v24' fill='none' stroke='%2365e6d4' stroke-width='5' stroke-linecap='round'/%3E%3Cpath d='M28 27h8M32 23v8' stroke='%23ffbd59' stroke-width='4' stroke-linecap='round'/%3E%3C/svg%3E">
+  <style>
+    :root {
+      color-scheme: dark;
+      --ink: #f4f8fc;
+      --muted: #9fb2c7;
+      --navy: #071525;
+      --panel: rgba(13, 35, 61, .8);
+      --line: rgba(164, 198, 229, .18);
+      --cyan: #65e6d4;
+      --cyan-deep: #1eb9ae;
+      --amber: #ffbd59;
+      --red: #ff7373;
+      --green: #7ee2a8;
+      --shadow: 0 26px 80px rgba(0, 0, 0, .34);
+      --radius: 24px;
+    }
+
+    * { box-sizing: border-box; }
+    html, body { min-height: 100%; }
+    body {
+      margin: 0;
+      min-width: 320px;
+      background:
+        radial-gradient(circle at 9% 8%, rgba(101, 230, 212, .14), transparent 32rem),
+        radial-gradient(circle at 91% 16%, rgba(255, 189, 89, .09), transparent 30rem),
+        linear-gradient(145deg, #06111e, var(--navy) 48%, #081a2e);
+      color: var(--ink);
+      font-family: Inter, ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", "Noto Sans TC", sans-serif;
+      line-height: 1.5;
+    }
+
+    button, textarea, input { font: inherit; }
+    button, a { color: inherit; }
+    [hidden] { display: none !important; }
+    .sr-only { position: absolute; width: 1px; height: 1px; padding: 0; margin: -1px; overflow: hidden; clip: rect(0,0,0,0); white-space: nowrap; border: 0; }
+
+    .shell {
+      width: min(1500px, 100%);
+      min-height: 100dvh;
+      margin: 0 auto;
+      padding: 24px clamp(18px, 3vw, 46px) 28px;
+      display: flex;
+      flex-direction: column;
+      gap: 22px;
+    }
+
+    .topbar { display: flex; align-items: center; justify-content: space-between; gap: 24px; min-height: 70px; }
+    .brand { display: flex; align-items: center; gap: 14px; min-width: 0; }
+    .brand-mark {
+      width: 48px;
+      aspect-ratio: 1;
+      border-radius: 16px;
+      display: grid;
+      place-items: center;
+      color: var(--cyan);
+      background: linear-gradient(145deg, rgba(101,230,212,.22), rgba(101,230,212,.05));
+      border: 1px solid rgba(101,230,212,.38);
+      box-shadow: inset 0 0 24px rgba(101,230,212,.08);
+      flex: 0 0 auto;
+    }
+    .brand-mark svg { width: 28px; height: 28px; }
+    .eyebrow { margin: 0 0 2px; color: var(--cyan); font-size: .78rem; font-weight: 850; letter-spacing: .17em; }
+    .brand h1 { margin: 0; font-size: clamp(1.08rem, 2.1vw, 1.5rem); letter-spacing: .02em; white-space: nowrap; }
+
+    .steps { display: flex; align-items: center; gap: 8px; }
+    .step { display: flex; align-items: center; gap: 8px; color: var(--muted); font-size: .9rem; font-weight: 750; white-space: nowrap; }
+    .step + .step::before { content: ""; width: 22px; height: 1px; background: var(--line); margin-right: 2px; }
+    .step-num { width: 28px; aspect-ratio: 1; display: grid; place-items: center; border-radius: 50%; border: 1px solid var(--line); font-size: .78rem; }
+    .step.active { color: var(--ink); }
+    .step.active .step-num { color: #05211f; border-color: var(--cyan); background: var(--cyan); }
+    .step.done .step-num { color: var(--cyan); border-color: rgba(101,230,212,.5); }
+
+    .panel {
+      background: linear-gradient(155deg, rgba(15,41,71,.92), rgba(9,28,50,.86));
+      border: 1px solid var(--line);
+      border-radius: var(--radius);
+      box-shadow: var(--shadow);
+    }
+
+    .setup-grid { flex: 1; display: grid; grid-template-columns: minmax(0,.92fr) minmax(380px,1.08fr); gap: 20px; min-height: 0; }
+    .setup-card, .order-card { padding: clamp(22px, 3vw, 38px); display: flex; flex-direction: column; min-width: 0; }
+    .section-kicker { margin: 0 0 8px; color: var(--cyan); font-weight: 850; letter-spacing: .12em; font-size: .77rem; }
+    .section-title { margin: 0; font-size: clamp(1.65rem, 3vw, 2.55rem); line-height: 1.18; }
+    .section-copy { margin: 12px 0 22px; color: var(--muted); font-size: 1rem; max-width: 58ch; }
+
+    .roster-input {
+      width: 100%; min-height: 240px; resize: vertical; color: var(--ink);
+      background: rgba(3,15,27,.58); border: 1px solid var(--line); border-radius: 18px;
+      padding: 18px 19px; line-height: 1.7; outline: none; transition: border-color .18s, box-shadow .18s;
+    }
+    .roster-input:focus { border-color: var(--cyan); box-shadow: 0 0 0 4px rgba(101,230,212,.1); }
+    .roster-input::placeholder { color: #6f849b; }
+
+    .actions, .order-footer, .stage-actions { display: flex; flex-wrap: wrap; gap: 10px; }
+    .actions { margin-top: 14px; }
+    .button {
+      min-height: 48px; border: 0; border-radius: 14px; padding: 0 18px;
+      display: inline-flex; align-items: center; justify-content: center; gap: 9px;
+      font-weight: 850; cursor: pointer; text-decoration: none;
+      transition: transform .15s, filter .15s, background .15s, border-color .15s;
+    }
+    .button:hover:not(:disabled) { transform: translateY(-1px); filter: brightness(1.06); }
+    .button:active:not(:disabled) { transform: translateY(0); }
+    .button:focus-visible, .text-button:focus-visible, .small-link:focus-visible { outline: 3px solid rgba(101,230,212,.38); outline-offset: 3px; }
+    .button:disabled { opacity: .38; cursor: not-allowed; }
+    .button.primary { background: var(--cyan); color: #06211f; }
+    .button.amber { background: var(--amber); color: #2d1b00; }
+    .button.ghost { background: rgba(255,255,255,.045); color: var(--ink); border: 1px solid var(--line); }
+    .button.danger { background: rgba(255,115,115,.12); color: #ffb0b0; border: 1px solid rgba(255,115,115,.28); }
+    .button.big { min-height: 58px; padding-inline: 26px; font-size: 1.04rem; }
+    .file-label { position: relative; overflow: hidden; }
+    .file-label input { position: absolute; inset: 0; opacity: 0; cursor: pointer; }
+    .hint-row { margin-top: auto; padding-top: 20px; display: flex; gap: 10px; color: var(--muted); font-size: .87rem; }
+
+    .order-head { display: flex; align-items: flex-start; justify-content: space-between; gap: 18px; }
+    .count-badge { padding: 8px 12px; border-radius: 999px; color: var(--cyan); background: rgba(101,230,212,.09); border: 1px solid rgba(101,230,212,.22); font-weight: 850; white-space: nowrap; }
+    .order-list { margin: 20px 0; padding: 0; list-style: none; display: grid; grid-template-columns: repeat(2,minmax(0,1fr)); gap: 10px; overflow: auto; min-height: 200px; align-content: start; }
+    .order-empty { grid-column: 1/-1; min-height: 220px; display: grid; place-items: center; text-align: center; color: var(--muted); border: 1px dashed var(--line); border-radius: 18px; padding: 30px; }
+    .order-item { display: flex; align-items: center; gap: 11px; min-height: 54px; padding: 10px 13px; background: rgba(2,14,26,.36); border: 1px solid var(--line); border-radius: 15px; animation: rise .32s both; }
+    .order-number { color: var(--amber); font-weight: 950; font-variant-numeric: tabular-nums; }
+    .order-name { min-width: 0; font-weight: 780; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+    .order-footer { margin-top: auto; }
+    .order-footer .button:last-child { flex: 1; }
+
+    .stage-layout { flex: 1; display: grid; grid-template-columns: 250px minmax(0,1fr); gap: 18px; min-height: 0; }
+    .candidate-rail { padding: 22px; display: flex; flex-direction: column; min-height: 0; }
+    .rail-title { margin: 0 0 14px; font-size: .82rem; color: var(--muted); letter-spacing: .12em; }
+    .candidate-list { display: flex; flex-direction: column; gap: 8px; overflow: auto; padding-right: 4px; }
+    .candidate { display: grid; grid-template-columns: 30px minmax(0,1fr); gap: 10px; align-items: center; padding: 11px; border-radius: 13px; color: var(--muted); border: 1px solid transparent; }
+    .candidate .ordinal { font-size: .78rem; font-weight: 900; text-align: center; }
+    .candidate .name { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; font-weight: 760; }
+    .candidate.current { color: var(--ink); border-color: rgba(101,230,212,.4); background: rgba(101,230,212,.1); }
+    .candidate.current .ordinal { color: var(--cyan); }
+    .candidate.complete { color: #8197ad; }
+    .candidate.complete .ordinal { color: var(--green); }
+
+    .presentation-stage { padding: clamp(22px,4vw,48px); min-width: 0; display: grid; grid-template-columns: minmax(0,1fr) minmax(290px,420px); gap: clamp(24px,4vw,56px); align-items: center; }
+    .speaker-zone { min-width: 0; }
+    .speaker-status { display: inline-flex; align-items: center; gap: 9px; margin-bottom: 16px; padding: 7px 11px; color: var(--cyan); background: rgba(101,230,212,.08); border: 1px solid rgba(101,230,212,.22); border-radius: 999px; font-size: .78rem; font-weight: 850; letter-spacing: .08em; }
+    .status-dot { width: 8px; height: 8px; border-radius: 50%; background: currentColor; box-shadow: 0 0 0 5px rgba(101,230,212,.08); }
+    .speaker-label { margin: 0; color: var(--muted); font-size: .88rem; letter-spacing: .15em; font-weight: 850; }
+    .student-name { margin: 8px 0 16px; font-size: clamp(3rem,9vw,7.4rem); line-height: .95; letter-spacing: -.055em; overflow-wrap: anywhere; }
+    .student-progress { margin: 0 0 28px; color: var(--muted); font-weight: 750; }
+    .next-card { max-width: 560px; margin-bottom: 30px; padding: 15px 17px; border-radius: 15px; background: rgba(3,15,27,.42); border: 1px solid var(--line); color: var(--muted); }
+    .next-card strong { margin-left: 7px; color: var(--ink); }
+    .stage-actions .button { min-width: 136px; }
+
+    .timer-zone { display: grid; place-items: center; }
+    .timer-ring {
+      --progress: 1;
+      width: min(390px,75vw); aspect-ratio: 1; border-radius: 50%; padding: 14px;
+      background: conic-gradient(var(--cyan) calc(var(--progress)*1turn), rgba(255,255,255,.075) 0);
+      display: grid; place-items: center; transition: background .2s, filter .2s;
+      box-shadow: 0 0 0 16px rgba(101,230,212,.035), 0 24px 70px rgba(0,0,0,.32);
+    }
+    .timer-ring.warning { background: conic-gradient(var(--amber) calc(var(--progress)*1turn), rgba(255,255,255,.075) 0); }
+    .timer-ring.danger { background: conic-gradient(var(--red) calc(var(--progress)*1turn), rgba(255,255,255,.075) 0); animation: pulse 1s infinite; }
+    .timer-ring.finished { filter: drop-shadow(0 0 26px rgba(255,115,115,.22)); }
+    .timer-face { width: 100%; aspect-ratio: 1; border-radius: 50%; background: #091a2d; display: grid; place-items: center; align-content: center; box-shadow: inset 0 0 42px rgba(0,0,0,.38); }
+    .timer-number { font-size: clamp(4.4rem,10vw,8.2rem); line-height: .9; font-weight: 950; letter-spacing: -.075em; font-variant-numeric: tabular-nums; }
+    .timer-caption { margin-top: 18px; color: var(--muted); font-size: .78rem; font-weight: 850; letter-spacing: .14em; }
+    .timer-controls { width: min(390px,100%); display: grid; grid-template-columns: 1.35fr .85fr; gap: 10px; margin-top: 24px; }
+    .timer-controls .button { width: 100%; }
+    .shortcut-hint { margin: 18px 0 0; color: var(--muted); font-size: .82rem; text-align: center; }
+    .key { display: inline-grid; place-items: center; min-width: 25px; height: 23px; padding: 0 6px; border: 1px solid var(--line); border-bottom-color: rgba(255,255,255,.3); border-radius: 6px; background: rgba(255,255,255,.05); color: var(--ink); font-size: .72rem; font-weight: 850; }
+
+    .complete-view { grid-column: 1/-1; text-align: center; padding: clamp(25px,4vw,55px); }
+    .complete-view h2 { margin: 8px 0 10px; font-size: clamp(2.4rem,6vw,5rem); }
+    .complete-view > p { color: var(--muted); margin: 0 auto 28px; max-width: 50ch; }
+    .completed-grid { width: min(800px,100%); margin: 0 auto 28px; display: grid; grid-template-columns: repeat(2,minmax(0,1fr)); gap: 10px; text-align: left; }
+    .completed-row { padding: 12px 14px; border: 1px solid var(--line); border-radius: 14px; background: rgba(3,15,27,.4); font-weight: 760; }
+    .completed-row span { color: var(--cyan); margin-right: 10px; font-weight: 900; }
+
+    .stage-footer { display: flex; justify-content: space-between; align-items: center; gap: 14px; color: var(--muted); font-size: .86rem; }
+    .small-link { color: var(--muted); text-underline-offset: 3px; }
+    .small-link:hover { color: var(--ink); }
+    .text-button { border: 0; padding: 7px; color: var(--muted); background: none; cursor: pointer; font-weight: 760; }
+    .text-button:hover { color: var(--ink); }
+
+    .shuffle-overlay { position: fixed; inset: 0; z-index: 20; display: grid; place-items: center; background: rgba(2,10,19,.91); backdrop-filter: blur(12px); opacity: 0; pointer-events: none; transition: opacity .18s; }
+    .shuffle-overlay.show { opacity: 1; pointer-events: auto; }
+    .shuffle-content { text-align: center; }
+    .shuffle-label { color: var(--muted); font-weight: 850; letter-spacing: .16em; }
+    .shuffle-number { margin: 8px 0 0; color: var(--cyan); font-size: clamp(5rem,18vw,13rem); line-height: 1; font-weight: 950; letter-spacing: -.07em; text-shadow: 0 0 55px rgba(101,230,212,.35); }
+    .toast { position: fixed; left: 50%; bottom: 28px; z-index: 30; max-width: calc(100vw - 32px); padding: 12px 18px; border-radius: 12px; background: #f3f7fb; color: #0a1b2f; font-weight: 850; box-shadow: var(--shadow); transform: translate(-50%,18px); opacity: 0; pointer-events: none; transition: .2s; }
+    .toast.show { transform: translate(-50%,0); opacity: 1; }
+
+    @keyframes rise { from { opacity: 0; transform: translateY(8px); } to { opacity: 1; transform: translateY(0); } }
+    @keyframes pulse { 50% { transform: scale(1.015); } }
+
+    @media (max-width: 1050px) {
+      .setup-grid { grid-template-columns: 1fr; }
+      .stage-layout { grid-template-columns: 210px minmax(0,1fr); }
+      .presentation-stage { grid-template-columns: 1fr; text-align: center; }
+      .next-card { margin-inline: auto; }
+      .stage-actions { justify-content: center; }
+      .timer-zone { grid-row: 1; }
+      .timer-ring { width: min(300px,66vw); }
+      .timer-number { font-size: clamp(4rem,13vw,6rem); }
+    }
+
+    @media (max-width: 760px) {
+      .shell { padding: 15px; gap: 15px; }
+      .topbar { align-items: flex-start; }
+      .steps { gap: 4px; }
+      .step span:last-child { display: none; }
+      .step + .step::before { width: 10px; }
+      .brand-mark { width: 42px; border-radius: 13px; }
+      .brand h1 { white-space: normal; }
+      .setup-card, .order-card, .candidate-rail, .presentation-stage { padding: 19px; }
+      .order-list { grid-template-columns: 1fr; }
+      .stage-layout { display: flex; flex-direction: column; }
+      .candidate-rail { max-height: 190px; }
+      .candidate-list { display: grid; grid-template-columns: repeat(2,minmax(0,1fr)); }
+      .presentation-stage { min-height: 650px; }
+      .timer-zone { grid-row: auto; }
+      .timer-ring { width: min(255px,72vw); }
+      .timer-controls { grid-template-columns: 1fr 1fr; }
+      .student-name { font-size: clamp(3rem,17vw,5.6rem); }
+      .stage-actions .button { flex: 1; min-width: 130px; }
+      .completed-grid { grid-template-columns: 1fr; }
+      .stage-footer { align-items: flex-start; }
+      .desktop-copy { display: none; }
+    }
+
+    @media (prefers-reduced-motion: reduce) {
+      *, *::before, *::after { scroll-behavior: auto !important; animation-duration: .001ms !important; transition-duration: .001ms !important; }
+    }
+  </style>
+</head>
+<body>
+  <main class="shell">
+    <header class="topbar">
+      <div class="brand">
+        <span class="brand-mark" aria-hidden="true">
+          <svg viewBox="0 0 32 32" fill="none"><path d="M7 25h18M9 22V8h14v14" stroke="currentColor" stroke-width="2.4" stroke-linecap="round"/><path d="M13 15h6M16 12v6" stroke="#ffbd59" stroke-width="2.7" stroke-linecap="round"/></svg>
+        </span>
+        <div><p class="eyebrow">KSHS · TYPT · ROUND 3</p><h1>上台簡報抽籤計時台</h1></div>
+      </div>
+      <nav class="steps" aria-label="甄選流程">
+        <div class="step active" data-step="1"><span class="step-num">1</span><span>輸入名單</span></div>
+        <div class="step" data-step="2"><span class="step-num">2</span><span>抽出順序</span></div>
+        <div class="step" data-step="3"><span class="step-num">3</span><span>三分鐘簡報</span></div>
+      </nav>
+    </header>
+
+    <section class="setup-grid" id="setup-screen">
+      <article class="panel setup-card">
+        <p class="section-kicker">STEP 01 · ROSTER</p>
+        <h2 class="section-title">輸入簡報學生名單</h2>
+        <p class="section-copy">每行一位學生，也可以讀取CSV或TXT。名單只保存在這台裝置的瀏覽器，不會上傳。</p>
+        <label for="roster-input" class="sr-only">學生名單</label>
+        <textarea class="roster-input" id="roster-input" placeholder="例如：&#10;王小明&#10;陳怡君&#10;林大同" spellcheck="false"></textarea>
+        <div class="actions">
+          <button class="button primary" id="import-button" type="button">匯入文字名單</button>
+          <label class="button ghost file-label">選擇CSV／TXT<input id="file-input" type="file" accept=".csv,.txt,text/csv,text/plain"></label>
+          <button class="button ghost" id="clear-button" type="button">清除</button>
+        </div>
+        <div class="hint-row"><span aria-hidden="true">ⓘ</span><span>CSV若包含座號與姓名，系統會取每列最後一欄作為姓名；重複姓名會自動合併。</span></div>
+      </article>
+
+      <article class="panel order-card">
+        <div class="order-head">
+          <div><p class="section-kicker">STEP 02 · DRAW ORDER</p><h2 class="section-title">抽出上台順序</h2></div>
+          <span class="count-badge" id="roster-count">0位</span>
+        </div>
+        <ol class="order-list" id="order-list"><li class="order-empty">匯入名單後，抽籤順序會顯示在這裡</li></ol>
+        <div class="order-footer">
+          <button class="button ghost" id="shuffle-order" type="button" disabled>隨機抽籤</button>
+          <button class="button amber big" id="start-session" type="button" disabled>開始上台簡報</button>
+        </div>
+      </article>
+    </section>
+
+    <section id="stage-screen" hidden>
+      <div class="stage-layout">
+        <aside class="panel candidate-rail">
+          <h2 class="rail-title">上台順序</h2>
+          <div class="candidate-list" id="candidate-list"></div>
+        </aside>
+
+        <article class="panel presentation-stage" id="presentation-stage">
+          <div class="speaker-zone" id="speaker-zone">
+            <div class="speaker-status"><span class="status-dot"></span><span id="status-text">準備開始</span></div>
+            <p class="speaker-label">NOW PRESENTING</p>
+            <h2 class="student-name" id="current-student">—</h2>
+            <p class="student-progress" id="student-progress">第1位／共1位</p>
+            <div class="next-card">下一位<strong id="next-student">—</strong></div>
+            <div class="stage-actions">
+              <button class="button ghost" id="previous-student" type="button">上一位</button>
+              <button class="button amber big" id="next-student-button" type="button">完成，下一位</button>
+            </div>
+          </div>
+
+          <div class="timer-zone" id="timer-zone">
+            <div class="timer-ring" id="timer-ring">
+              <div class="timer-face">
+                <span class="timer-number" id="timer-number" role="timer" aria-label="剩餘3分0秒">3:00</span>
+                <span class="timer-caption">PRESENTATION TIME</span>
+              </div>
+            </div>
+            <div class="timer-controls">
+              <button class="button primary big" id="timer-toggle" type="button">開始計時</button>
+              <button class="button ghost" id="timer-reset" type="button">重設3分鐘</button>
+            </div>
+            <p class="shortcut-hint"><span class="key">Space</span> 開始／暫停　<span class="key">R</span> 重設　<span class="key">N</span> 下一位</p>
+          </div>
+        </article>
+      </div>
+    </section>
+
+    <footer class="stage-footer">
+      <span class="desktop-copy" id="footer-copy">第三場甄選：抽出順序後，每位學生簡報3分鐘。</span>
+      <div>
+        <a class="small-link" href="../">第二場英文口說抽題台</a>
+        <button class="text-button" id="fullscreen-button" type="button">全螢幕</button>
+        <button class="text-button" id="back-button" type="button" hidden>返回名單</button>
+      </div>
+    </footer>
+  </main>
+
+  <div class="shuffle-overlay" id="shuffle-overlay" aria-hidden="true"><div class="shuffle-content"><div class="shuffle-label">DRAWING ORDER</div><div class="shuffle-number" id="shuffle-number">01</div></div></div>
+  <div class="toast" id="toast" role="status" aria-live="polite"></div>
+
+  <script type="module">
+    import {
+      PRESENTATION_SECONDS,
+      parseRoster,
+      createSession,
+      advanceStudent,
+      previousStudent,
+      remainingSeconds,
+      formatTime,
+    } from './logic.js';
+
+    const STORAGE_KEY = 'kshs-typt-presentation-v1';
+    const el = id => document.getElementById(id);
+    const setupScreen = el('setup-screen');
+    const stageScreen = el('stage-screen');
+    const rosterInput = el('roster-input');
+    const orderList = el('order-list');
+    const candidateList = el('candidate-list');
+    const timerRing = el('timer-ring');
+    const timerNumber = el('timer-number');
+    const timerToggle = el('timer-toggle');
+    const toast = el('toast');
+    const overlay = el('shuffle-overlay');
+    const overlayNumber = el('shuffle-number');
+    let timerId = null;
+    let timerDeadline = null;
+    let toastId = null;
+
+    function setupState(roster = []) {
+      return { phase: 'setup', roster, order: [], current: 0, completed: [], secondsLeft: PRESENTATION_SECONDS, timerRunning: false, finished: false };
+    }
+
+    function secureRandom() {
+      const values = new Uint32Array(1);
+      crypto.getRandomValues(values);
+      return values[0] / 0x100000000;
+    }
+
+    function loadState() {
+      try {
+        const saved = JSON.parse(sessionStorage.getItem(STORAGE_KEY));
+        if (!saved || !Array.isArray(saved.roster) || !Array.isArray(saved.order) || !Array.isArray(saved.completed)) return null;
+        if (saved.roster.length > 30 || saved.secondsLeft < 0 || saved.secondsLeft > PRESENTATION_SECONDS) return null;
+        return { ...saved, timerRunning: false };
+      } catch (_) { return null; }
+    }
+
+    let state = loadState() || setupState();
+
+    function saveState() {
+      sessionStorage.setItem(STORAGE_KEY, JSON.stringify({ ...state, timerRunning: false }));
+    }
+
+    function stopClock() {
+      if (timerId) window.clearInterval(timerId);
+      timerId = null;
+      timerDeadline = null;
+      state.timerRunning = false;
+    }
+
+    function setRoster(names, announce = true) {
+      if (!names.length) throw new Error('名單至少需要1位學生。');
+      if (names.length > 30) throw new Error('名單最多30位學生。');
+      stopClock();
+      state = setupState(names);
+      rosterInput.value = names.join('\n');
+      saveState();
+      render();
+      if (announce) showToast(`已匯入${names.length}位學生`);
+    }
+
+    function importRoster() {
+      try { setRoster(parseRoster(rosterInput.value)); }
+      catch (error) { showToast(error.message); }
+    }
+
+    function sleep(ms) {
+      return new Promise(resolve => setTimeout(resolve, ms));
+    }
+
+    async function shuffleOrder(announce = true) {
+      if (!state.roster.length) throw new Error('請先匯入學生名單。');
+      overlay.classList.add('show');
+      overlay.setAttribute('aria-hidden', 'false');
+      const reduceMotion = matchMedia('(prefers-reduced-motion: reduce)').matches;
+      const duration = reduceMotion ? 80 : 720;
+      const spin = () => {
+        overlayNumber.textContent = String(Math.floor(secureRandom() * state.roster.length) + 1).padStart(2, '0');
+      };
+      spin();
+      const spinId = window.setInterval(spin, reduceMotion ? 80 : 60);
+      await sleep(duration);
+      window.clearInterval(spinId);
+      const session = createSession(state.roster, secureRandom);
+      state = { ...session, phase: 'setup' };
+      saveState();
+      render();
+      overlay.classList.remove('show');
+      overlay.setAttribute('aria-hidden', 'true');
+      if (announce) showToast('已抽出新的上台順序');
+    }
+
+    async function startSession() {
+      if (!state.roster.length) return showToast('請先匯入學生名單');
+      if (!state.order.length) await shuffleOrder(false);
+      state.phase = 'stage';
+      saveState();
+      render();
+    }
+
+    function toggleTimer(force) {
+      if (state.finished) return;
+      const shouldRun = typeof force === 'boolean' ? force : !state.timerRunning;
+      if (!shouldRun) {
+        if (timerDeadline) state.secondsLeft = remainingSeconds(timerDeadline);
+        stopClock();
+        saveState();
+        renderTimer();
+        return;
+      }
+      if (state.secondsLeft === 0) state.secondsLeft = PRESENTATION_SECONDS;
+      state.timerRunning = true;
+      timerDeadline = Date.now() + state.secondsLeft * 1000;
+      if (timerId) window.clearInterval(timerId);
+      timerId = window.setInterval(updateClock, 200);
+      updateClock();
+      saveState();
+    }
+
+    function updateClock() {
+      if (!state.timerRunning || !timerDeadline) return;
+      state.secondsLeft = remainingSeconds(timerDeadline);
+      renderTimer();
+      if (state.secondsLeft === 0) {
+        stopClock();
+        saveState();
+        playEndSignal();
+        showToast('3分鐘時間到');
+        renderTimer();
+      }
+    }
+
+    function resetTimer() {
+      stopClock();
+      state.secondsLeft = PRESENTATION_SECONDS;
+      saveState();
+      renderTimer();
+      showToast('計時器已重設為3:00');
+    }
+
+    function completeCurrent() {
+      if (state.finished) return;
+      stopClock();
+      state = advanceStudent(state);
+      saveState();
+      renderStage();
+    }
+
+    function goPrevious() {
+      if (state.current <= 0) return;
+      stopClock();
+      state = previousStudent(state);
+      saveState();
+      renderStage();
+      showToast('已回到上一位學生');
+    }
+
+    function playEndSignal() {
+      try {
+        const AudioContext = window.AudioContext || window.webkitAudioContext;
+        const context = new AudioContext();
+        [0, .28, .56].forEach((delay, index) => {
+          const oscillator = context.createOscillator();
+          const gain = context.createGain();
+          oscillator.type = 'sine';
+          oscillator.frequency.value = index === 2 ? 660 : 520;
+          gain.gain.setValueAtTime(.0001, context.currentTime + delay);
+          gain.gain.exponentialRampToValueAtTime(.18, context.currentTime + delay + .015);
+          gain.gain.exponentialRampToValueAtTime(.0001, context.currentTime + delay + .18);
+          oscillator.connect(gain).connect(context.destination);
+          oscillator.start(context.currentTime + delay);
+          oscillator.stop(context.currentTime + delay + .2);
+        });
+        setTimeout(() => context.close(), 1000);
+      } catch (_) { /* visual state still shows time up */ }
+    }
+
+    function render() {
+      const inStage = state.phase === 'stage';
+      setupScreen.hidden = inStage;
+      stageScreen.hidden = !inStage;
+      el('back-button').hidden = !inStage;
+      el('footer-copy').textContent = inStage ? 'Space開始／暫停・R重設・N下一位・B上一位' : '第三場甄選：抽出順序後，每位學生簡報3分鐘。';
+      document.querySelectorAll('.step').forEach((step, index) => {
+        const number = index + 1;
+        step.classList.toggle('active', inStage ? number === 3 : (state.order.length ? number === 2 : number === 1));
+        step.classList.toggle('done', inStage ? number < 3 : (state.order.length ? number < 2 : false));
+      });
+      if (inStage) renderStage(); else renderSetup();
+    }
+
+    function renderSetup() {
+      el('roster-count').textContent = `${state.roster.length}位`;
+      el('shuffle-order').disabled = !state.roster.length;
+      el('start-session').disabled = !state.roster.length;
+      const list = state.order.length ? state.order : state.roster;
+      if (!list.length) {
+        orderList.innerHTML = '<li class="order-empty">匯入名單後，抽籤順序會顯示在這裡</li>';
+        return;
+      }
+      orderList.innerHTML = list.map((_, index) => `<li class="order-item" style="animation-delay:${Math.min(index * 18, 240)}ms"><span class="order-number">${String(index + 1).padStart(2,'0')}</span><span class="order-name"></span></li>`).join('');
+      [...orderList.querySelectorAll('.order-name')].forEach((node, index) => { node.textContent = list[index]; });
+    }
+
+    function renderStage() {
+      candidateList.innerHTML = state.order.map((_, index) => {
+        const status = index < state.current ? 'complete' : index === state.current && !state.finished ? 'current' : '';
+        return `<div class="candidate ${status}"><span class="ordinal">${index < state.current ? '✓' : String(index + 1).padStart(2,'0')}</span><span class="name"></span></div>`;
+      }).join('');
+      [...candidateList.querySelectorAll('.candidate .name')].forEach((node, index) => { node.textContent = state.order[index]; });
+
+      const stage = el('presentation-stage');
+      if (state.finished) {
+        stage.innerHTML = `<div class="complete-view"><p class="section-kicker">ROUND COMPLETE</p><h2>本輪簡報完成</h2><p>${state.order.length}位學生都已完成三分鐘上台簡報。</p><div class="completed-grid" id="completed-grid"></div><button class="button amber big" id="new-round" type="button">回到名單，開始新一輪</button></div>`;
+        const grid = el('completed-grid');
+        state.order.forEach((name, index) => {
+          const row = document.createElement('div');
+          row.className = 'completed-row';
+          const no = document.createElement('span');
+          no.textContent = String(index + 1).padStart(2,'0');
+          row.append(no, document.createTextNode(name));
+          grid.append(row);
+        });
+        el('new-round').addEventListener('click', returnToSetup);
+        return;
+      }
+
+      if (!el('speaker-zone')) window.location.reload();
+      el('current-student').textContent = state.order[state.current];
+      el('student-progress').textContent = `第${state.current + 1}位／共${state.order.length}位`;
+      el('next-student').textContent = state.order[state.current + 1] || '本輪最後一位';
+      el('previous-student').disabled = state.current === 0;
+      el('status-text').textContent = state.timerRunning ? '簡報進行中' : (state.secondsLeft === 0 ? '時間到' : (state.secondsLeft < PRESENTATION_SECONDS ? '計時已暫停' : '準備開始'));
+      renderTimer();
+      requestAnimationFrame(() => candidateList.querySelector('.candidate.current')?.scrollIntoView({ block: 'nearest' }));
+    }
+
+    function renderTimer() {
+      if (!timerNumber.isConnected) return;
+      timerNumber.textContent = formatTime(state.secondsLeft);
+      timerNumber.setAttribute('aria-label', `剩餘${Math.floor(state.secondsLeft / 60)}分${state.secondsLeft % 60}秒`);
+      timerRing.style.setProperty('--progress', state.secondsLeft / PRESENTATION_SECONDS);
+      timerRing.classList.toggle('warning', state.secondsLeft <= 60 && state.secondsLeft > 20);
+      timerRing.classList.toggle('danger', state.secondsLeft <= 20);
+      timerRing.classList.toggle('finished', state.secondsLeft === 0);
+      timerToggle.textContent = state.timerRunning ? '暫停計時' : (state.secondsLeft === PRESENTATION_SECONDS ? '開始計時' : (state.secondsLeft === 0 ? '重新計時' : '繼續計時'));
+      el('status-text').textContent = state.timerRunning ? '簡報進行中' : (state.secondsLeft === 0 ? '時間到' : (state.secondsLeft < PRESENTATION_SECONDS ? '計時已暫停' : '準備開始'));
+    }
+
+    function returnToSetup() {
+      if (state.current > 0 && !state.finished && !confirm('目前簡報進度會被清除，確定返回名單嗎？')) return;
+      const roster = [...state.roster];
+      stopClock();
+      state = setupState(roster);
+      rosterInput.value = roster.join('\n');
+      saveState();
+      render();
+    }
+
+    function showToast(message) {
+      toast.textContent = message;
+      toast.classList.add('show');
+      clearTimeout(toastId);
+      toastId = setTimeout(() => toast.classList.remove('show'), 2400);
+    }
+
+    el('import-button').addEventListener('click', importRoster);
+    el('clear-button').addEventListener('click', () => {
+      stopClock(); sessionStorage.removeItem(STORAGE_KEY); state = setupState(); rosterInput.value = ''; render(); rosterInput.focus();
+    });
+    el('file-input').addEventListener('change', async event => {
+      const file = event.target.files?.[0];
+      if (!file) return;
+      try { rosterInput.value = await file.text(); importRoster(); }
+      catch (_) { showToast('無法讀取這個檔案'); }
+      event.target.value = '';
+    });
+    el('shuffle-order').addEventListener('click', () => shuffleOrder().catch(error => showToast(error.message)));
+    el('start-session').addEventListener('click', () => startSession().catch(error => showToast(error.message)));
+    timerToggle.addEventListener('click', () => toggleTimer());
+    el('timer-reset').addEventListener('click', resetTimer);
+    el('next-student-button').addEventListener('click', completeCurrent);
+    el('previous-student').addEventListener('click', goPrevious);
+    el('back-button').addEventListener('click', returnToSetup);
+    el('fullscreen-button').addEventListener('click', async () => {
+      try { if (!document.fullscreenElement) await document.documentElement.requestFullscreen(); else await document.exitFullscreen(); }
+      catch (_) { showToast('瀏覽器無法切換全螢幕'); }
+    });
+
+    document.addEventListener('keydown', event => {
+      if (state.phase !== 'stage' || /TEXTAREA|INPUT/.test(event.target.tagName) || state.finished) return;
+      if (event.code === 'Space') { event.preventDefault(); toggleTimer(); }
+      if (event.key.toLowerCase() === 'r') resetTimer();
+      if (event.key.toLowerCase() === 'n') completeCurrent();
+      if (event.key.toLowerCase() === 'b') goPrevious();
+    });
+
+    if (state.roster.length) rosterInput.value = state.roster.join('\n');
+    render();
+  </script>
+</body>
+</html>
